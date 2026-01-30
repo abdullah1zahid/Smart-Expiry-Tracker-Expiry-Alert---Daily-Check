@@ -1,0 +1,675 @@
+{
+  "name": "Smart Expiry Tracker + Expiry Alert - Daily Check",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "32a5139c-7f83-4c9e-9e24-2a594a025734",
+      "name": "Image Receiver",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        -96
+      ],
+      "webhookId": "43623444-77e7-4335-a618-71be8974f7ba",
+      "credentials": {
+        "telegramApi": {
+          "id": "REuYrtCRiBfFeR3u",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot8540735724:AAElllsyCG0qcVRysLdtW3wpS_9_4y4t1zY/{{ $json.result.file_path }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "e4e2647e-d643-439f-8bc7-b8f11d8cde67",
+      "name": "Get Product Photo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        432,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  if (item.binary && item.binary.data) {\n    item.binary.data.mimeType = 'image/jpeg';\n    item.binary.data.fileExtension = 'jpg';\n    item.binary.data.fileName = 'image.jpg';\n  }\n}\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -96
+      ],
+      "id": "c014ef68-92a2-4997-a88a-554b9b868639",
+      "name": "Fix Image Format"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Image Receiver').item.json.message.chat.id }}",
+        "text": "=✅ Saved!\n📦 Item: {{ $json.item_name }}\n📅 Expiry: {{ $json.expiry_date }}",
+        "additionalFields": {}
+      },
+      "id": "f31fea59-7fda-411d-9df3-ed2de691d50c",
+      "name": "Confirmation Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1568,
+        -96
+      ],
+      "webhookId": "345dd454-ade9-47fa-8a60-8addff96f90e",
+      "credentials": {
+        "telegramApi": {
+          "id": "REuYrtCRiBfFeR3u",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "f1ea35fe-50c4-447c-95d8-2394255e8bfc",
+      "name": "Daily Scheduler (9 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        16,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6a586879-3c7a-4f19-85a8-31dd0ff19603",
+              "leftValue": "={{ $json.expiry_date }}",
+              "rightValue": "={{ $now.toFormat('yyyy-MM-dd') }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        272
+      ],
+      "id": "0d6b6c3f-66e5-4086-ad9a-2011e60ca847",
+      "name": "Identify Expired Items"
+    },
+    {
+      "parameters": {
+        "chatId": "1000607368",
+        "text": "=={{ \n\"⚠️ *Expiry Alert!*\" + \"\\n\\n\" +\n\"*Dear Abdullah Zahid,* the following item is about to expire or has already expired:\" + \"\\n\\n\" +\n\"📦 *Item:* \" + $json.item_name + \"\\n\" +\n\"📅 *Expiry Date:* \" + $json.expiry_date + \"\\n\\n\" +\n\"*Status:* \" + ($json.expiry_date < $now.toFormat('yyyy-MM-dd') ? \"❌ EXPIRED\" : \"⚠️ EXPIRING SOON\") + \"\\n\\n\" +\n\"Please take the necessary action.\"\n}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "fddc5a06-91f6-4441-842d-537defeb2a34",
+      "name": "Send Expiry Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        816,
+        272
+      ],
+      "webhookId": "1d735ede-6271-4845-b3a2-14073795be1c",
+      "credentials": {
+        "telegramApi": {
+          "id": "REuYrtCRiBfFeR3u",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot8540735724:AAElllsyCG0qcVRysLdtW3wpS_9_4y4t1zY/getFile?file_id={{ $json.message.photo.slice(-1)[0].file_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "622aa361-7741-49b1-b6a5-d097223e4479",
+      "name": "Resolve Image URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        128,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Extract the 'item_name' and 'expiry_date' from this image.\n      Return ONLY a JSON object like this:\n      {\n        \"item_name\": \"Product Name\",\n        \"expiry_date\": \"YYYY-MM-DD\"\n      }\n      If no date is found, set expiry_date to \"Not Found\"."
+            },
+            {
+              "type": "image",
+              "imageType": "base64"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        960,
+        -96
+      ],
+      "id": "1a767f5e-522c-4e2d-b1c3-563ef01d3d14",
+      "name": "OpenAI Vision Extract",
+      "credentials": {
+        "openAiApi": {
+          "id": "Soxcnc9nqzCSGJbF",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "15gPJUoqEp1yb4s5H_VEUWXAP18eIh_mZz6RclasSlKM",
+          "mode": "list",
+          "cachedResultName": "Smart_Inventory_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15gPJUoqEp1yb4s5H_VEUWXAP18eIh_mZz6RclasSlKM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15gPJUoqEp1yb4s5H_VEUWXAP18eIh_mZz6RclasSlKM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "item_name": "={{ JSON.parse($json.output[0].content[0].text.replace(/```json|```/g, \"\")).item_name }}",
+            "expiry_date": "={{ JSON.parse($json.output[0].content[0].text.replace(/```json|```/g, \"\")).expiry_date }}",
+            "user_id": "={{ $('Image Receiver').item.json.message.from.id }}",
+            "chat_id": "={{ $('Image Receiver').item.json.message.chat.id }}",
+            "added_date": "={{ $now.toFormat('yyyy-MM-dd') }}",
+            "ocr_text": "={{ $json.output[0].content[0].text.replace(/```json|```/g, \"\").trim() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "item_name",
+              "displayName": "item_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expiry_date",
+              "displayName": "expiry_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ocr_text",
+              "displayName": "ocr_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "added_date",
+              "displayName": "added_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "fee811f3-d221-4636-bde0-a64e1f8f58e8",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1312,
+        -96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "g2VIqSa88pb2GDRq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "15gPJUoqEp1yb4s5H_VEUWXAP18eIh_mZz6RclasSlKM",
+          "mode": "list",
+          "cachedResultName": "Smart_Inventory_DB",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15gPJUoqEp1yb4s5H_VEUWXAP18eIh_mZz6RclasSlKM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/15gPJUoqEp1yb4s5H_VEUWXAP18eIh_mZz6RclasSlKM/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "86904c77-38a2-47f8-9e99-49500da24c53",
+      "name": "Read Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        272,
+        272
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "g2VIqSa88pb2GDRq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "📱 TRIGGER POINT\n• Listens for photo messages\n• Activates when user sends image\n• Passes message data to next node\n",
+        "height": 320,
+        "width": 272,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -256,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "1dc76189-25ea-455b-a290-20393198c733",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "🔗 GET FILE INFO\n• Calls Telegram API\n• Retrieves file_path from photo\n• Uses bot token for authentication\n",
+        "height": 320,
+        "width": 288,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        32,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "3fca638d-f8d7-4bea-8899-e2fa296f1f6e",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "⬇️ DOWNLOAD IMAGE\n• Downloads actual binary file\n• Response format: File\n• Prepares image for AI processing\n",
+        "height": 320,
+        "width": 304,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        336,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "05bb8ba4-6b31-4c15-af61-8a5f8cbcc675",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "🔄 FORMAT CONVERTER\n• Converts binary to Base64\n• Required for OpenAI Vision API\n• Adds image/jpeg MIME type\n",
+        "height": 320,
+        "width": 256,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        656,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "436a9182-c591-4c22-8203-34f96c61ed76",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "🤖 AI EXTRACTION\n• Uses GPT-4 Vision model\n• Extracts: item_name, expiry_date\n• Returns structured JSON\n• Date format: YYYY-MM-DD\n",
+        "height": 320,
+        "width": 288,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        928,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "022af3d1-cacb-476d-b558-25aecd0e0cdf",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "💾 DATABASE SAVE\n• Appends new row to sheet\n• Sheet: Smart_Inventory_DB\n• Columns: item_name, expiry_date, added_date\n",
+        "height": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1232,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "2d0bc5a1-5324-4084-a659-2fd84a27b5e9",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "✅ SUCCESS MESSAGE\n• Sends confirmation to user\n• Shows saved item details\n• Mentions alert system active\n",
+        "height": 320,
+        "width": 272,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1488,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "263a747a-20f6-4c15-a299-78ca0abe7976",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "⏰ CRON TRIGGER\n• Runs daily at 9:00 AM\n• Timezone: Asia/Karachi (PKT)\n• Starts monitoring workflow\n",
+        "height": 288,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -64,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "b211b1f7-5414-488d-aa61-5c00aab72a89",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "📊 READ DATABASE\n• Fetches all rows from sheet\n• Sheet: Smart_Inventory_DB\n• Returns complete inventory list\n",
+        "height": 288,
+        "width": 256,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        192,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "cc8de9cc-0522-4a4f-8827-33a6e81986b9",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "🔍 DATE CHECKER\n• Compares expiry_date with today\n• Condition: is before or equal to\n• Passes only expired/expiring items\n",
+        "height": 288,
+        "width": 272,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        464,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "65b63d82-448c-4e1a-abb3-643c14b817b3",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "🚨 ALERT SENDER\n• Sends formatted message\n• Lists all expired items\n• Includes item names + dates\n",
+        "height": 288,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        752,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "db70246a-d403-46d8-ae1a-efcc1cd79100",
+      "name": "Sticky Note10"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Image Receiver": {
+      "main": [
+        [
+          {
+            "node": "Resolve Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Product Photo": {
+      "main": [
+        [
+          {
+            "node": "Fix Image Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Image Format": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Vision Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Scheduler (9 AM)": {
+      "main": [
+        [
+          {
+            "node": "Read Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identify Expired Items": {
+      "main": [
+        [
+          {
+            "node": "Send Expiry Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Image URL": {
+      "main": [
+        [
+          {
+            "node": "Get Product Photo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Vision Extract": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Confirmation Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Identify Expired Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "de671211-1ba0-47eb-a60e-1255b4d0901c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bc774d01a36b1358fe79243b064579e1db576ef896fd14a4bb69983aaa2dfc31"
+  },
+  "id": "LX8ZUP8lvyKny9IoIv-GJ",
+  "tags": [
+    {
+      "updatedAt": "2026-01-30T18:16:36.582Z",
+      "createdAt": "2026-01-30T18:16:36.582Z",
+      "id": "f7TSPlyBdyneu1EJ",
+      "name": "AI-Vision"
+    },
+    {
+      "updatedAt": "2026-01-30T18:16:24.625Z",
+      "createdAt": "2026-01-30T18:16:24.625Z",
+      "id": "h3S1rclQHUPfqfkE",
+      "name": "Inventory-Management"
+    },
+    {
+      "updatedAt": "2026-01-30T18:16:59.902Z",
+      "createdAt": "2026-01-30T18:16:59.902Z",
+      "id": "iu9ibWRQj0ac34ae",
+      "name": "Telegram-Bot"
+    },
+    {
+      "updatedAt": "2026-01-30T18:16:48.443Z",
+      "createdAt": "2026-01-30T18:16:48.443Z",
+      "id": "n43NVHSV6hbpquWa",
+      "name": "Expiry-Tracker"
+    },
+    {
+      "updatedAt": "2026-01-30T18:16:11.628Z",
+      "createdAt": "2026-01-30T18:16:11.628Z",
+      "id": "xqERG3F3XGXh5gJE",
+      "name": "OCR-Automation"
+    }
+  ]
+}
